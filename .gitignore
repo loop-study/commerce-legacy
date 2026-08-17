@@ -16,3 +16,10 @@ target/
 
 # 주의: src/main/webapp/upload 는 무시하지 않는다.
 # data.sql 이 참조하는 기본 상품 이미지가 들어 있어서, 빠지면 화면이 깨진다.
+
+# AI 도구 설정
+CLAUDE.md
+
+# bench 실행 상태 (run.sh init 이 다시 만든다)
+bench/.offset
+bench/.state
