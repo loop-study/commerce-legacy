@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.commerce.ec.cm.login.service.impl.LoginMapper">
+
+	<!-- 회원 로그인 정보 조회 -->
+	<select id="selectMbrLoginInfo" parameterType="hashMap" resultType="hashMap">
+		/* LoginSQL.selectMbrLoginInfo */
+		SELECT
+			MBR_NO      AS "mbrNo",
+			LOGIN_ID    AS "loginId",
+			PWD         AS "pwd",
+			MBR_NM      AS "mbrNm",
+			HP_NO       AS "hpNo",
+			MBR_STAT_CD AS "mbrStatCd",
+			MBR_GRD_CD  AS "mbrGrdCd"
+		FROM TB_MBR
+		WHERE LOGIN_ID = #{loginId}
+	</select>
+
+	<!-- 로그인 실패 횟수 증가 -->
+	<update id="updateLoginFailCnt" parameterType="hashMap">
+		/* LoginSQL.updateLoginFailCnt */
+		UPDATE TB_MBR
+		SET LOGIN_FAIL_CNT = LOGIN_FAIL_CNT + 1,
+		    UPD_DT = CURRENT_TIMESTAMP
+		WHERE LOGIN_ID = #{loginId}
+	</update>
+
+	<!-- 로그인 성공 시 실패 횟수 초기화 -->
+	<update id="resetLoginFailCnt" parameterType="hashMap">
+		/* LoginSQL.resetLoginFailCnt */
+		UPDATE TB_MBR
+		SET LOGIN_FAIL_CNT = 0,
+		    UPD_DT = CURRENT_TIMESTAMP
+		WHERE LOGIN_ID = #{loginId}
+	</update>
+
+</mapper>

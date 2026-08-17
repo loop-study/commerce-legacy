@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.commerce.ec.mb.join.service.impl.JoinMapper">
+
+	<!-- 아이디 중복 체크 -->
+	<select id="selectDupIdCheck" parameterType="hashMap" resultType="int">
+		/* JoinSQL.selectDupIdCheck */
+		SELECT COUNT(*)
+		FROM TB_MBR
+		WHERE LOGIN_ID = #{loginId}
+	</select>
+
+	<!-- 최대 회원번호 조회 -->
+	<select id="selectMaxMbrNo" resultType="String">
+		/* JoinSQL.selectMaxMbrNo */
+		SELECT MAX(MBR_NO)
+		FROM TB_MBR
+	</select>
+
+	<!-- 회원 등록 -->
+	<insert id="insertJoinMbr" parameterType="joinUserVO">
+		/* JoinSQL.insertJoinMbr */
+		INSERT INTO TB_MBR (
+			MBR_NO, LOGIN_ID, PWD, MBR_NM, HP_NO, EMAIL,
+			MBR_STAT_CD, MBR_GRD_CD,
+			ZIPCODE, BASE_ADDR, DTL_ADDR,
+			REG_DT, UPD_DT
+		) VALUES (
+			#{mbrNo}, #{loginId}, #{pwd}, #{mbrNm}, #{hpNo}, #{email},
+			'10', '10',
+			#{zipcode}, #{baseAddr}, #{dtlAddr},
+			CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+		)
+	</insert>
+
+</mapper>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC
+        "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN"
+        "http://tiles.apache.org/dtds/tiles-config_3_0.dtd">
+<tiles-definitions>
+    <!-- 메인 레이아웃 (FO) -->
+    <definition name="main-tiles" template="/WEB-INF/jsp/com/commerce/ec/cmmn/main-layouts.jsp">
+        <put-attribute name="header" value="/WEB-INF/jsp/com/commerce/ec/cmmn/header.jsp"/>
+        <put-attribute name="content" value=""/>
+        <put-attribute name="footer" value="/WEB-INF/jsp/com/commerce/ec/cmmn/footer.jsp"/>
+    </definition>
+
+    <!-- FO 페이지들 -->
+    <definition name="*/*/*.main" extends="main-tiles">
+        <put-attribute name="content" value="/WEB-INF/jsp/com/commerce/ec/{1}/{2}/{3}.jsp"/>
+    </definition>
+
+    <!-- 회원가입 레이아웃 (심플) -->
+    <definition name="join-tiles" template="/WEB-INF/jsp/com/commerce/ec/cmmn/main-layouts.jsp">
+        <put-attribute name="header" value="/WEB-INF/jsp/com/commerce/ec/cmmn/header.jsp"/>
+        <put-attribute name="content" value=""/>
+        <put-attribute name="footer" value="/WEB-INF/jsp/com/commerce/ec/cmmn/footer.jsp"/>
+    </definition>
+    <definition name="*/*/*.join" extends="join-tiles">
+        <put-attribute name="content" value="/WEB-INF/jsp/com/commerce/ec/{1}/{2}/{3}.jsp"/>
+    </definition>
+
+    <!-- 관리자(BO) 레이아웃 -->
+    <definition name="admin-tiles" template="/WEB-INF/jsp/com/commerce/ec/cmmn/admin-layouts.jsp">
+        <put-attribute name="header" value="/WEB-INF/jsp/com/commerce/ec/cmmn/admin-header.jsp"/>
+        <put-attribute name="content" value=""/>
+        <put-attribute name="footer" value="/WEB-INF/jsp/com/commerce/ec/cmmn/footer.jsp"/>
+    </definition>
+    <definition name="*/*.admin" extends="admin-tiles">
+        <put-attribute name="content" value="/WEB-INF/jsp/com/commerce/admin/{1}/{2}.jsp"/>
+    </definition>
+
+    <!-- 관리자 로그인 레이아웃 (헤더/푸터 없음) -->
+    <definition name="adminLogin-tiles" template="/WEB-INF/jsp/com/commerce/ec/cmmn/admin-login-layouts.jsp">
+        <put-attribute name="content" value=""/>
+    </definition>
+    <definition name="*/*.adminLogin" extends="adminLogin-tiles">
+        <put-attribute name="content" value="/WEB-INF/jsp/com/commerce/admin/{1}/{2}.jsp"/>
+    </definition>
+</tiles-definitions>

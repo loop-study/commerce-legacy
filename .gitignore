@@ -1,0 +1,18 @@
+# 빌드 산출물
+target/
+
+# IDE
+*.iml
+.idea/
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+
+# 로그
+*.log
+
+# 주의: src/main/webapp/upload 는 무시하지 않는다.
+# data.sql 이 참조하는 기본 상품 이미지가 들어 있어서, 빠지면 화면이 깨진다.

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+    <!-- Component Scan - Controllers Only -->
+    <context:component-scan base-package="com.commerce.ec" use-default-filters="false">
+        <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+    <context:component-scan base-package="com.commerce.admin" use-default-filters="false">
+        <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+    </context:component-scan>
+
+    <mvc:annotation-driven/>
+
+    <!-- Tiles View Resolver (order=1) -->
+    <bean id="tilesConfigurer" class="org.springframework.web.servlet.view.tiles3.TilesConfigurer">
+        <property name="definitions">
+            <list>
+                <value>/WEB-INF/tiles/default-layout.xml</value>
+            </list>
+        </property>
+    </bean>
+    <bean id="tilesViewResolver" class="org.springframework.web.servlet.view.tiles3.TilesViewResolver">
+        <property name="order" value="1"/>
+    </bean>
+
+    <!-- JSP View Resolver (order=2) -->
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="order" value="2"/>
+        <property name="prefix" value="/WEB-INF/jsp/com/commerce/ec/"/>
+        <property name="suffix" value=".jsp"/>
+        <property name="contentType" value="text/html; charset=UTF-8"/>
+    </bean>
+
+    <!-- Multipart Resolver -->
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="maxUploadSize" value="15728640"/>
+        <property name="defaultEncoding" value="UTF-8"/>
+    </bean>
+
+    <!-- Interceptors -->
+    <mvc:interceptors>
+        <!-- 회원 로그인 인터셉터 -->
+        <mvc:interceptor>
+            <mvc:mapping path="/od/**"/>
+            <mvc:mapping path="/my/**"/>
+            <bean class="com.commerce.ec.cmmn.LoginHandlerInterceptor"/>
+        </mvc:interceptor>
+        <!-- 관리자 로그인 인터셉터 -->
+        <mvc:interceptor>
+            <mvc:mapping path="/admin/**"/>
+            <mvc:exclude-mapping path="/admin/login.do"/>
+            <mvc:exclude-mapping path="/admin/selectLoginProc.do"/>
+            <bean class="com.commerce.ec.cmmn.AdminLoginHandlerInterceptor"/>
+        </mvc:interceptor>
+    </mvc:interceptors>
+
+    <!-- Static Resources -->
+    <mvc:resources mapping="/common/**" location="/common/"/>
+    <mvc:resources mapping="/prdimg/**" location="/prdimg/"/>
+</beans>

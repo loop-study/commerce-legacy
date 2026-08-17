@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.commerce.ec.od.order.service.impl.OrderMapper">
+
+	<!-- 장바구니에서 주문 상품 목록 -->
+	<select id="selectOrderPrdListFromCart" parameterType="hashMap" resultType="hashMap">
+		/* OrderSQL.selectOrderPrdListFromCart */
+		SELECT
+			A.PRD_CD        AS "prdCd",
+			A.ORD_QTY       AS "ordQty",
+			B.PRD_NM        AS "prdNm",
+			B.SMPL_DESC     AS "smplDesc",
+			B.PRD_STAT_CD   AS "prdStatCd",
+			C.SALE_PRC      AS "salePrc",
+			C.CARD_DISC_PRC AS "cardDiscPrc",
+			C.CASH_DISC_PRC AS "cashDiscPrc",
+			D.IMG_PATH      AS "imgPath"
+		FROM TB_CART A
+		INNER JOIN TB_PRD_MST B ON A.PRD_CD = B.PRD_CD
+		LEFT JOIN TB_PRD_PRC C ON A.PRD_CD = C.PRD_CD
+		LEFT JOIN TB_PRD_IMG D ON A.PRD_CD = D.PRD_CD AND D.IMG_TP_CD = '10' AND D.SORT_SEQ = 1
+		WHERE A.MBR_NO = #{mbrNo}
+		  AND B.PRD_STAT_CD IN ('30', '50')
+		<!-- 장바구니 선택주문 : 선택된 CART_NO 만 주문 대상 -->
+		<if test="cartNoArr != null and cartNoArr.size() > 0">
+			AND A.CART_NO IN
+			<foreach collection="cartNoArr" item="cartNo" open="(" close=")" separator=",">
+				#{cartNo}
+			</foreach>
+		</if>
+		ORDER BY A.REG_DT DESC
+	</select>
+
+	<!-- 바로구매 상품 정보 -->
+	<select id="selectOrderPrdInfo" parameterType="hashMap" resultType="hashMap">
+		/* OrderSQL.selectOrderPrdInfo */
+		SELECT
+			A.PRD_CD        AS "prdCd",
+			#{ordQty}       AS "ordQty",
+			A.PRD_NM        AS "prdNm",
+			A.SMPL_DESC     AS "smplDesc",
+			A.PRD_STAT_CD   AS "prdStatCd",
+			B.SALE_PRC      AS "salePrc",
+			B.CARD_DISC_PRC AS "cardDiscPrc",
+			B.CASH_DISC_PRC AS "cashDiscPrc",
+			C.IMG_PATH      AS "imgPath"
+		FROM TB_PRD_MST A
+		LEFT JOIN TB_PRD_PRC B ON A.PRD_CD = B.PRD_CD
+		LEFT JOIN TB_PRD_IMG C ON A.PRD_CD = C.PRD_CD AND C.IMG_TP_CD = '10' AND C.SORT_SEQ = 1
+		WHERE A.PRD_CD = #{prdCd}
+		  AND A.PRD_STAT_CD IN ('30', '50')
+	</select>
+
+	<!-- 회원 정보 (배송지용) -->
+	<select id="selectMbrInfo" parameterType="hashMap" resultType="hashMap">
+		/* OrderSQL.selectMbrInfo */
+		SELECT
+			MBR_NO              AS "mbrNo",
+			MBR_NM              AS "mbrNm",
+			HP_NO               AS "hpNo",
+			ZIPCODE             AS "zipcode",
+			BASE_ADDR           AS "baseAddr",
+			DTL_ADDR            AS "dtlAddr"
+		FROM TB_MBR
+		WHERE MBR_NO = #{mbrNo}
+	</select>
+
+	<!-- 주문번호 최대값 (사용 안 함 - 랜덤 생성으로 대체) -->
+	<select id="selectMaxOrdNo" parameterType="hashMap" resultType="String">
+		/* OrderSQL.selectMaxOrdNo */
+		SELECT MAX(ORD_NO)
+		FROM TB_ORD_MST
+		WHERE ORD_NO LIKE CONCAT(#{prefix}, '%')
+	</select>
+
+	<!-- 임시 주문 INSERT (주문서 진입 시점) -->
+	<insert id="insertOrderTemp" parameterType="hashMap">
+		/* OrderSQL.insertOrderTemp */
+		INSERT INTO TB_ORD_TEMP (
+			ORD_NO, MBR_NO, ORD_PRD_JSON, FROM_CART, CART_NO_LIST, REG_DT
+		) VALUES (
+			#{ordNo}, #{mbrNo}, #{ordPrdJson}, #{fromCart}, #{cartNoList}, CURRENT_TIMESTAMP
+		)
+	</insert>
+
+	<!-- 임시 주문 조회 (본인 것만) -->
+	<select id="selectOrderTemp" parameterType="hashMap" resultType="hashMap">
+		/* OrderSQL.selectOrderTemp */
+		SELECT
+			ORD_NO          AS "ordNo",
+			MBR_NO          AS "mbrNo",
+			ORD_PRD_JSON    AS "ordPrdJson",
+			FROM_CART       AS "fromCart",
+			CART_NO_LIST    AS "cartNoList"
+		FROM TB_ORD_TEMP
+		WHERE ORD_NO = #{ordNo}
+		  AND MBR_NO = #{mbrNo}
+	</select>
+
+	<!-- 임시 주문 삭제 (결제 완료 후) -->
+	<delete id="deleteOrderTemp" parameterType="hashMap">
+		/* OrderSQL.deleteOrderTemp */
+		DELETE FROM TB_ORD_TEMP
+		WHERE ORD_NO = #{ordNo}
+	</delete>
+
+	<!-- 주문마스터 INSERT -->
+	<insert id="insertOrderMst" parameterType="hashMap">
+		/* OrderSQL.insertOrderMst */
+		INSERT INTO TB_ORD_MST (
+			ORD_NO, MBR_NO, ORD_DT, ORD_STAT_CD, PAY_TP_CD,
+			PAY_AMT, DELV_AMT, DEPOSITOR_NM, PG_APRV_NO,
+			RECIVER_NM, DELV_HP_NO, DELV_ZIPCODE,
+			DELV_BASE_ADDR, DELV_DTL_ADDR, DELV_MSG
+		) VALUES (
+			#{ordNo}, #{mbrNo}, CURRENT_TIMESTAMP, '10', #{payTpCd},
+			#{payAmt}, 0, #{depositorNm}, #{pgAprvNo},
+			#{reciverNm}, #{delvHpNo}, #{delvZipcode},
+			#{delvBaseAddr}, #{delvDtlAddr}, #{delvMsg}
+		)
+	</insert>
+
+	<!-- 주문상세 INSERT -->
+	<insert id="insertOrderDtl" parameterType="hashMap">
+		/* OrderSQL.insertOrderDtl */
+		INSERT INTO TB_ORD_DTL (
+			ORD_NO, ORD_SEQ, PRD_CD, ORD_QTY, ORD_AMT, SALE_PRC, DISC_AMT, DELV_STAT_CD
+		) VALUES (
+			#{ordNo}, #{ordSeq}, #{prdCd}, #{ordQty},
+			#{ordAmt}, #{salePrc}, #{discAmt}, '10'
+		)
+	</insert>
+
+	<!-- 상품 재고수량 조회 (0이면 재고 미관리 = 수량제한 없음) -->
+	<select id="selectPrdStockQty" parameterType="hashMap" resultType="int">
+		/* OrderSQL.selectPrdStockQty */
+		SELECT STOCK_QTY
+		FROM TB_PRD_MST
+		WHERE PRD_CD = #{prdCd}
+	</select>
+
+	<!-- 재고 차감 : 재고 미관리(0)는 WHERE 조건에 걸리지 않아 차감되지 않음 -->
+	<!--            차감 후 0이 되면 일시품절(40)로 자동 변경 -->
+	<update id="updatePrdStockDecrease" parameterType="hashMap">
+		/* OrderSQL.updatePrdStockDecrease */
+		UPDATE TB_PRD_MST
+		SET STOCK_QTY = STOCK_QTY - ${ordQty},
+			UPD_DT = CURRENT_TIMESTAMP
+		WHERE PRD_CD = #{prdCd}
+	</update>
+
+	<!-- 재고 소진 시 일시품절(40) 전환 -->
+	<update id="updatePrdSoldOut" parameterType="hashMap">
+		/* OrderSQL.updatePrdSoldOut */
+		UPDATE TB_PRD_MST
+		SET PRD_STAT_CD = '40',
+			UPD_DT = CURRENT_TIMESTAMP
+		WHERE PRD_CD = #{prdCd}
+	</update>
+
+	<!-- 주문 결과 조회 -->
+	<select id="selectOrderResult" parameterType="hashMap" resultType="hashMap">
+		/* OrderSQL.selectOrderResult */
+		SELECT
+			A.ORD_NO            AS "ordNo",
+			A.ORD_DT            AS "ordDt",
+			A.ORD_STAT_CD       AS "ordStatCd",
+			A.PAY_TP_CD         AS "payTpCd",
+			A.PAY_AMT           AS "payAmt",
+			A.DELV_AMT          AS "delvAmt",
+			A.DEPOSITOR_NM      AS "depositorNm",
+			A.PG_APRV_NO        AS "pgAprvNo",
+			DATE_FORMAT(DATE_ADD(A.ORD_DT, INTERVAL 3 DAY), '%Y-%m-%d') AS "payLimitDt",
+			A.RECIVER_NM        AS "reciverNm",
+			A.DELV_HP_NO        AS "delvHpNo",
+			A.DELV_ZIPCODE      AS "delvZipcode",
+			A.DELV_BASE_ADDR    AS "delvBaseAddr",
+			A.DELV_DTL_ADDR     AS "delvDtlAddr",
+			A.DELV_MSG          AS "delvMsg",
+			CASE A.PAY_TP_CD
+				WHEN '10' THEN '무통장입금'
+				WHEN '20' THEN '카드결제'
+			END AS "payTpNm",
+			CASE A.ORD_STAT_CD
+				WHEN '10' THEN '주문확인'
+				WHEN '20' THEN '결제완료'
+				WHEN '30' THEN '배송준비'
+				WHEN '40' THEN '배송중'
+				WHEN '50' THEN '배송완료'
+				WHEN '90' THEN '주문취소'
+			END AS "ordStatNm",
+			D.INVOICE_NO        AS "invoiceNo",
+			CASE D.DELV_CO_CD
+				WHEN 'CJ'     THEN 'CJ대한통운'
+				WHEN 'HANJIN' THEN '한진택배'
+				WHEN 'LOTTE'  THEN '롯데택배'
+				WHEN 'POST'   THEN '우체국택배'
+				WHEN 'LOGEN'  THEN '로젠택배'
+			END AS "delvCoNm"
+		FROM TB_ORD_MST A
+		LEFT JOIN TB_ORD_DELV_INFO D ON A.ORD_NO = D.ORD_NO
+		WHERE A.ORD_NO = #{ordNo}
+		  AND A.MBR_NO = #{mbrNo}
+	</select>
+
+	<!-- 주문 상세 목록 -->
+	<select id="selectOrderDtlList" parameterType="hashMap" resultType="hashMap">
+		/* OrderSQL.selectOrderDtlList */
+		SELECT
+			A.ORD_SEQ       AS "ordSeq",
+			A.PRD_CD        AS "prdCd",
+			A.ORD_QTY       AS "ordQty",
+			A.ORD_AMT       AS "ordAmt",
+			A.SALE_PRC      AS "salePrc",
+			B.PRD_NM        AS "prdNm",
+			B.SMPL_DESC     AS "smplDesc",
+			C.IMG_PATH      AS "imgPath"
+		FROM TB_ORD_DTL A
+		INNER JOIN TB_PRD_MST B ON A.PRD_CD = B.PRD_CD
+		LEFT JOIN TB_PRD_IMG C ON A.PRD_CD = C.PRD_CD AND C.IMG_TP_CD = '10' AND C.SORT_SEQ = 1
+		WHERE A.ORD_NO = #{ordNo}
+		ORDER BY A.ORD_SEQ
+	</select>
+
+</mapper>

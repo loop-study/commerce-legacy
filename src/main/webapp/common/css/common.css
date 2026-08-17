@@ -1,0 +1,46 @@
+@charset "UTF-8";
+
+/* ------------------------------------------------------------
+   공통 로딩 레이어
+
+   결제처럼 외부 응답을 기다리는 동안 화면 전체를 덮는다.
+   덮여 있는 사이에는 아래쪽 버튼과 링크가 눌리지 않는다.
+   ------------------------------------------------------------ */
+#commLoading {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2000;
+}
+
+#commLoading .comm-loading-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+#commLoading .comm-loading-spinner {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto;
+    border: 4px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: commLoadingSpin 0.9s linear infinite;
+}
+
+#commLoading .comm-loading-text {
+    margin-top: 14px;
+    color: #fff;
+    font-size: 14px;
+}
+
+@keyframes commLoadingSpin {
+    to { transform: rotate(360deg); }
+}

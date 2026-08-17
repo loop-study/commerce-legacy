@@ -1,0 +1,20 @@
+# ============================================================
+#  문자셋 고정
+#
+#  MySQL 컨테이너의 초기화 스크립트(docker-entrypoint-initdb.d)는
+#  mysql CLI 로 실행되는데, 이 클라이언트의 기본 charset 이 latin1 이다.
+#  그대로 두면 schema.sql/data.sql 의 UTF-8 한글을 latin1 로 읽어
+#  utf8mb4 로 다시 인코딩한다 = 이중 인코딩. 상품명이 통째로 깨진다.
+#
+#  [client]/[mysql] 을 지정해야 초기화 시점부터 올바르게 들어간다.
+#  ([mysqld] 만 utf8mb4 로 잡는 것으로는 부족하다)
+# ============================================================
+[client]
+default-character-set = utf8mb4
+
+[mysql]
+default-character-set = utf8mb4
+
+[mysqld]
+character-set-server  = utf8mb4
+collation-server      = utf8mb4_unicode_ci

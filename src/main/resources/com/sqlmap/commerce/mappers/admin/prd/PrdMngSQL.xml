@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.commerce.admin.prd.service.impl.PrdMngMapper">
+
+	<!-- 관리자 상품 검색 조건 -->
+	<sql id="prdMngSearchCondition">
+		WHERE 1=1
+		<if test="searchKeyword != null and searchKeyword != ''">
+			AND (A.PRD_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+			  OR A.PRD_CD LIKE CONCAT('%', #{searchKeyword}, '%'))
+		</if>
+		<if test="prdStatCd != null and prdStatCd != ''">
+			AND A.PRD_STAT_CD = #{prdStatCd}
+		</if>
+	</sql>
+
+	<!-- 관리자 상품 목록 -->
+	<select id="selectPrdMngList" parameterType="hashMap" resultType="hashMap">
+		/* PrdMngSQL.selectPrdMngList */
+		SELECT
+			A.PRD_CD        AS "prdCd",
+			A.PRD_NM        AS "prdNm",
+			A.PRD_STAT_CD   AS "prdStatCd",
+			CASE A.PRD_STAT_CD
+				WHEN '30' THEN '판매중'
+				WHEN '40' THEN '일시품절'
+				WHEN '50' THEN '예약판매'
+				WHEN '90' THEN '판매종료'
+				ELSE '기타'
+			END AS "prdStatNm",
+			B.SALE_PRC      AS "salePrc",
+			A.STOCK_QTY     AS "stockQty",
+			D.CAT_NM        AS "lCatNm",
+			A.REG_DT        AS "regDt"
+		FROM TB_PRD_MST A
+		LEFT JOIN TB_PRD_PRC B ON A.PRD_CD = B.PRD_CD
+		LEFT JOIN TB_CAT_MNG D ON A.L_CAT_CD = D.CAT_CD
+		<include refid="prdMngSearchCondition"/>
+		ORDER BY A.REG_DT DESC
+		LIMIT #{pageSize} OFFSET #{limitStart}
+	</select>
+
+	<!-- 관리자 상품 목록 건수 -->
+	<select id="selectPrdMngListCnt" parameterType="hashMap" resultType="int">
+		/* PrdMngSQL.selectPrdMngListCnt */
+		SELECT COUNT(*)
+		FROM TB_PRD_MST A
+		<include refid="prdMngSearchCondition"/>
+	</select>
+
+	<!-- 관리자 상품 상세 -->
+	<select id="selectPrdMngDtl" parameterType="hashMap" resultType="prdRegVO">
+		/* PrdMngSQL.selectPrdMngDtl */
+		SELECT
+			A.PRD_CD            AS "prdCd",
+			A.PRD_NM            AS "prdNm",
+			A.SMPL_DESC         AS "smplDesc",
+			A.PRD_STAT_CD       AS "prdStatCd",
+			A.DELV_TP_CD        AS "delvTpCd",
+			A.L_CAT_CD          AS "lCatCd",
+			A.M_CAT_CD          AS "mCatCd",
+			A.S_CAT_CD          AS "sCatCd",
+			A.STOCK_QTY         AS "stockQty",
+			B.SALE_PRC          AS "salePrc",
+			B.CARD_DISC_PRC     AS "cardDiscPrc",
+			B.CASH_DISC_PRC     AS "cashDiscPrc",
+			C.IMG_PATH          AS "imgPath",
+		C.IMG_NAME          AS "imgName"
+		FROM TB_PRD_MST A
+		LEFT JOIN TB_PRD_PRC B ON A.PRD_CD = B.PRD_CD
+		LEFT JOIN TB_PRD_IMG C ON A.PRD_CD = C.PRD_CD AND C.IMG_TP_CD = '10' AND C.SORT_SEQ = 1
+		WHERE A.PRD_CD = #{prdCd}
+	</select>
+
+	<!-- 레벨별 카테고리 목록 -->
+	<select id="selectCategoryByLevel" parameterType="int" resultType="hashMap">
+		/* PrdMngSQL.selectCategoryByLevel */
+		SELECT
+			CAT_CD  AS "catCd",
+			CAT_NM  AS "catNm"
+		FROM TB_CAT_MNG
+		WHERE USE_YN = 'Y'
+		  AND CAT_LVL = #{catLvl}
+		ORDER BY SORT_SEQ
+	</select>
+
+	<!-- 하위 카테고리 목록 -->
+	<select id="selectSubCategoryList" parameterType="String" resultType="hashMap">
+		/* PrdMngSQL.selectSubCategoryList */
+		SELECT
+			CAT_CD  AS "catCd",
+			CAT_NM  AS "catNm"
+		FROM TB_CAT_MNG
+		WHERE USE_YN = 'Y'
+		  AND UP_CAT_CD = #{upCatCd}
+		ORDER BY SORT_SEQ
+	</select>
+
+	<!-- 최대 상품코드 조회 -->
+	<select id="selectMaxPrdCd" resultType="String">
+		/* PrdMngSQL.selectMaxPrdCd */
+		SELECT MAX(PRD_CD) FROM TB_PRD_MST
+	</select>
+
+	<!-- 상품 마스터 등록 -->
+	<insert id="insertPrdMst" parameterType="prdRegVO">
+		/* PrdMngSQL.insertPrdMst */
+		INSERT INTO TB_PRD_MST (
+			PRD_CD, PRD_NM, SMPL_DESC, PRD_STAT_CD, DELV_TP_CD,
+			L_CAT_CD, M_CAT_CD, S_CAT_CD,
+			STOCK_QTY
+		) VALUES (
+			#{prdCd}, #{prdNm}, #{smplDesc}, #{prdStatCd}, #{delvTpCd},
+			#{lCatCd}, #{mCatCd}, #{sCatCd},
+			#{stockQty}
+		)
+	</insert>
+
+	<!-- 상품 가격 등록 -->
+	<insert id="insertPrdPrc" parameterType="prdRegVO">
+		/* PrdMngSQL.insertPrdPrc */
+		INSERT INTO TB_PRD_PRC (
+			PRD_CD, SALE_PRC, CARD_DISC_PRC, CASH_DISC_PRC
+		) VALUES (
+			#{prdCd}, #{salePrc}, #{cardDiscPrc}, #{cashDiscPrc}
+		)
+	</insert>
+
+	<!-- 상품 이미지 등록 -->
+	<insert id="insertPrdImg" parameterType="prdRegVO">
+		/* PrdMngSQL.insertPrdImg */
+		INSERT INTO TB_PRD_IMG (
+			PRD_CD, IMG_PATH, IMG_NAME, IMG_TP_CD, SORT_SEQ
+		) VALUES (
+			#{prdCd}, #{imgPath}, #{imgName}, '10', 1
+		)
+	</insert>
+
+	<!-- 상품 이미지 삭제 (대표이미지) -->
+	<delete id="deletePrdImg" parameterType="String">
+		/* PrdMngSQL.deletePrdImg */
+		DELETE FROM TB_PRD_IMG
+		WHERE PRD_CD = #{prdCd} AND IMG_TP_CD = '10'
+	</delete>
+
+	<!-- 상세이미지 목록 조회 -->
+	<select id="selectPrdDtlImgList" parameterType="String" resultType="hashMap">
+		/* PrdMngSQL.selectPrdDtlImgList */
+		SELECT
+			IMG_NO      AS "imgNo",
+			IMG_PATH    AS "imgPath",
+			IMG_NAME    AS "imgName",
+			SORT_SEQ    AS "sortSeq"
+		FROM TB_PRD_IMG
+		WHERE PRD_CD = #{prdCd} AND IMG_TP_CD = '20'
+		ORDER BY SORT_SEQ
+	</select>
+
+	<!-- 상세이미지 등록 (IMG_TP_CD 20, 여러 장) -->
+	<insert id="insertPrdDtlImg" parameterType="hashMap">
+		/* PrdMngSQL.insertPrdDtlImg */
+		INSERT INTO TB_PRD_IMG (
+			PRD_CD, IMG_PATH, IMG_NAME, IMG_TP_CD, SORT_SEQ
+		) VALUES (
+			#{prdCd}, #{imgPath}, #{imgName}, '20', #{sortSeq}
+		)
+	</insert>
+
+	<!-- 상세이미지 전체 삭제 -->
+	<delete id="deletePrdDtlImg" parameterType="String">
+		/* PrdMngSQL.deletePrdDtlImg */
+		DELETE FROM TB_PRD_IMG
+		WHERE PRD_CD = #{prdCd} AND IMG_TP_CD = '20'
+	</delete>
+
+	<!-- 상품 마스터 수정 -->
+	<update id="updatePrdMst" parameterType="prdRegVO">
+		/* PrdMngSQL.updatePrdMst */
+		UPDATE TB_PRD_MST SET
+			PRD_NM = #{prdNm},
+			SMPL_DESC = #{smplDesc},
+			PRD_STAT_CD = #{prdStatCd},
+			DELV_TP_CD = #{delvTpCd},
+			L_CAT_CD = #{lCatCd},
+			M_CAT_CD = #{mCatCd},
+			S_CAT_CD = #{sCatCd},
+			STOCK_QTY = #{stockQty},
+			UPD_DT = CURRENT_TIMESTAMP
+		WHERE PRD_CD = #{prdCd}
+	</update>
+
+	<!-- 상품 가격 수정 -->
+	<update id="updatePrdPrc" parameterType="prdRegVO">
+		/* PrdMngSQL.updatePrdPrc */
+		UPDATE TB_PRD_PRC SET
+			SALE_PRC = #{salePrc},
+			CARD_DISC_PRC = #{cardDiscPrc},
+			CASH_DISC_PRC = #{cashDiscPrc}
+		WHERE PRD_CD = #{prdCd}
+	</update>
+
+	<!-- 상품 상태 변경 -->
+	<update id="updatePrdStat" parameterType="hashMap">
+		/* PrdMngSQL.updatePrdStat */
+		UPDATE TB_PRD_MST SET
+			PRD_STAT_CD = #{prdStatCd},
+			UPD_DT = CURRENT_TIMESTAMP
+		WHERE PRD_CD = #{prdCd}
+	</update>
+
+</mapper>

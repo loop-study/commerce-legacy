@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.commerce.admin.od.order.service.impl.OrdMngMapper">
+
+    <!-- 공통 검색 조건 -->
+    <sql id="ordMngSearchCondition">
+        WHERE 1=1
+        <if test="searchPeriod != null and searchPeriod != ''">
+            <choose>
+                <when test='searchPeriod == "1"'>
+                    AND A.ORD_DT >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 MONTH)
+                </when>
+                <when test='searchPeriod == "3"'>
+                    AND A.ORD_DT >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 MONTH)
+                </when>
+                <when test='searchPeriod == "6"'>
+                    AND A.ORD_DT >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 6 MONTH)
+                </when>
+            </choose>
+        </if>
+        <if test="ordStatCd != null and ordStatCd != ''">
+            AND A.ORD_STAT_CD = #{ordStatCd}
+        </if>
+        <if test="payTpCd != null and payTpCd != ''">
+            AND A.PAY_TP_CD = #{payTpCd}
+        </if>
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (B.MBR_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+              OR B.LOGIN_ID LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </sql>
+
+    <!-- 주문 목록 -->
+    <select id="selectOrdMngList" parameterType="hashMap" resultType="hashMap">
+        /* OrdMngSQL.selectOrdMngList */
+        SELECT
+            A.ORD_NO            AS "ordNo",
+            DATE_FORMAT(A.ORD_DT, '%Y-%m-%d %H:%i') AS "ordDt",
+            B.MBR_NM            AS "mbrNm",
+            B.LOGIN_ID          AS "loginId",
+            CASE A.PAY_TP_CD
+                WHEN '10' THEN '무통장입금'
+                WHEN '20' THEN '카드결제'
+            END AS "payTpNm",
+            A.PAY_TP_CD         AS "payTpCd",
+            CASE A.ORD_STAT_CD
+                WHEN '10' THEN '주문확인'
+                WHEN '20' THEN '결제완료'
+                WHEN '30' THEN '배송준비'
+                WHEN '40' THEN '배송중'
+                WHEN '50' THEN '배송완료'
+                WHEN '90' THEN '주문취소'
+            END AS "ordStatNm",
+            A.ORD_STAT_CD       AS "ordStatCd",
+            A.PAY_AMT           AS "payAmt",
+            (SELECT COUNT(*) FROM TB_ORD_DTL WHERE ORD_NO = A.ORD_NO) AS "dtlCnt",
+            (SELECT B2.PRD_NM
+             FROM TB_ORD_DTL B1
+             INNER JOIN TB_PRD_MST B2 ON B1.PRD_CD = B2.PRD_CD
+             WHERE B1.ORD_NO = A.ORD_NO AND B1.ORD_SEQ = 1) AS "firstPrdNm"
+        FROM TB_ORD_MST A
+        LEFT JOIN TB_MBR B ON A.MBR_NO = B.MBR_NO
+        <include refid="ordMngSearchCondition"/>
+        ORDER BY A.ORD_DT DESC
+        LIMIT #{pageSize} OFFSET #{limitStart}
+    </select>
+
+    <!-- 주문 건수 -->
+    <select id="selectOrdMngListCnt" parameterType="hashMap" resultType="int">
+        /* OrdMngSQL.selectOrdMngListCnt */
+        SELECT COUNT(*)
+        FROM TB_ORD_MST A
+        LEFT JOIN TB_MBR B ON A.MBR_NO = B.MBR_NO
+        <include refid="ordMngSearchCondition"/>
+    </select>
+
+    <!-- 주문 상세 (마스터 + 배송정보 + 회원) -->
+    <select id="selectOrdMngDtl" parameterType="hashMap" resultType="hashMap">
+        /* OrdMngSQL.selectOrdMngDtl */
+        SELECT
+            A.ORD_NO                        AS "ordNo",
+            DATE_FORMAT(A.ORD_DT, '%Y-%m-%d %H:%i:%s') AS "ordDt",
+            A.ORD_STAT_CD                   AS "ordStatCd",
+            CASE A.ORD_STAT_CD
+                WHEN '10' THEN '주문확인'
+                WHEN '20' THEN '결제완료'
+                WHEN '30' THEN '배송준비'
+                WHEN '40' THEN '배송중'
+                WHEN '50' THEN '배송완료'
+                WHEN '90' THEN '주문취소'
+            END AS "ordStatNm",
+            A.PAY_TP_CD                     AS "payTpCd",
+            CASE A.PAY_TP_CD
+                WHEN '10' THEN '무통장입금'
+                WHEN '20' THEN '카드결제'
+            END AS "payTpNm",
+            A.PAY_AMT                       AS "payAmt",
+            A.DELV_AMT                      AS "delvAmt",
+            A.DEPOSITOR_NM                  AS "depositorNm",
+            A.PG_APRV_NO                    AS "pgAprvNo",
+            A.RECIVER_NM                    AS "reciverNm",
+            A.DELV_HP_NO                    AS "delvHpNo",
+            A.DELV_ZIPCODE                  AS "delvZipcode",
+            A.DELV_BASE_ADDR                AS "delvBaseAddr",
+            A.DELV_DTL_ADDR                 AS "delvDtlAddr",
+            A.DELV_MSG                      AS "delvMsg",
+            B.MBR_NO                        AS "mbrNo",
+            B.MBR_NM                        AS "mbrNm",
+            B.LOGIN_ID                      AS "loginId"
+        FROM TB_ORD_MST A
+        LEFT JOIN TB_MBR B ON A.MBR_NO = B.MBR_NO
+        WHERE A.ORD_NO = #{ordNo}
+    </select>
+
+    <!-- 주문 상품 목록 -->
+    <select id="selectOrdDtlList" parameterType="hashMap" resultType="hashMap">
+        /* OrdMngSQL.selectOrdDtlList */
+        SELECT
+            A.ORD_SEQ       AS "ordSeq",
+            A.PRD_CD        AS "prdCd",
+            B.PRD_NM        AS "prdNm",
+            A.ORD_QTY       AS "ordQty",
+            A.SALE_PRC      AS "salePrc",
+            A.DISC_AMT      AS "discAmt",
+            A.ORD_AMT       AS "ordAmt",
+            C.IMG_PATH      AS "imgPath"
+        FROM TB_ORD_DTL A
+        LEFT JOIN TB_PRD_MST B ON A.PRD_CD = B.PRD_CD
+        LEFT JOIN TB_PRD_IMG C ON A.PRD_CD = C.PRD_CD AND C.IMG_TP_CD = '10' AND C.SORT_SEQ = 1
+        WHERE A.ORD_NO = #{ordNo}
+        ORDER BY A.ORD_SEQ
+    </select>
+
+    <!-- 주문 상태 변경 -->
+    <update id="updateOrdStat" parameterType="hashMap">
+        /* OrdMngSQL.updateOrdStat */
+        UPDATE TB_ORD_MST
+        SET ORD_STAT_CD = #{ordStatCd}
+        WHERE ORD_NO = #{ordNo}
+    </update>
+
+    <!-- 배송정보 조회 -->
+    <select id="selectOrdDelvInfo" parameterType="hashMap" resultType="hashMap">
+        /* OrdMngSQL.selectOrdDelvInfo */
+        SELECT
+            ORD_DELV_NO     AS "ordDelvNo",
+            ORD_NO          AS "ordNo",
+            DELV_CO_CD      AS "delvCoCd",
+            CASE DELV_CO_CD
+                WHEN 'CJ'     THEN 'CJ대한통운'
+                WHEN 'HANJIN' THEN '한진택배'
+                WHEN 'LOTTE'  THEN '롯데택배'
+                WHEN 'POST'   THEN '우체국택배'
+                WHEN 'LOGEN'  THEN '로젠택배'
+            END AS "delvCoNm",
+            INVOICE_NO      AS "invoiceNo",
+            DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i') AS "regDt"
+        FROM TB_ORD_DELV_INFO
+        WHERE ORD_NO = #{ordNo}
+    </select>
+
+    <!-- 배송정보 등록 -->
+    <insert id="insertOrdDelvInfo" parameterType="hashMap">
+        /* OrdMngSQL.insertOrdDelvInfo */
+        INSERT INTO TB_ORD_DELV_INFO (
+            ORD_NO, DELV_CO_CD, INVOICE_NO, DELV_STAT_CD, REG_DT
+        ) VALUES (
+            #{ordNo}, #{delvCoCd}, #{invoiceNo}, '40', CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <!-- 배송정보 수정 -->
+    <update id="updateOrdDelvInfo" parameterType="hashMap">
+        /* OrdMngSQL.updateOrdDelvInfo */
+        UPDATE TB_ORD_DELV_INFO
+        SET DELV_CO_CD = #{delvCoCd},
+            INVOICE_NO = #{invoiceNo}
+        WHERE ORD_NO = #{ordNo}
+    </update>
+
+    <!-- 취소 대상 주문의 상품/수량 목록 (재고 복원용) -->
+    <select id="selectOrdPrdQtyList" parameterType="hashMap" resultType="hashMap">
+        /* OrdMngSQL.selectOrdPrdQtyList */
+        SELECT
+            PRD_CD      AS "prdCd",
+            ORD_QTY     AS "ordQty"
+        FROM TB_ORD_DTL
+        WHERE ORD_NO = #{ordNo}
+        ORDER BY ORD_SEQ
+    </select>
+
+    <!-- 재고 복원 : 재고 미관리(재고 0 + 판매중)는 차감된 적이 없으므로 복원 대상 아님 -->
+    <!--            소진되어 일시품절(40)이 된 상품은 판매중(30)으로 되돌림 -->
+    <update id="updatePrdStockRestore" parameterType="hashMap">
+        /* OrdMngSQL.updatePrdStockRestore */
+        UPDATE TB_PRD_MST
+        SET STOCK_QTY = STOCK_QTY + #{ordQty},
+            PRD_STAT_CD = CASE WHEN PRD_STAT_CD = '40' THEN '30' ELSE PRD_STAT_CD END,
+            UPD_DT = CURRENT_TIMESTAMP
+        WHERE PRD_CD = #{prdCd}
+          AND (STOCK_QTY &gt; 0 OR PRD_STAT_CD = '40')
+    </update>
+
+</mapper>

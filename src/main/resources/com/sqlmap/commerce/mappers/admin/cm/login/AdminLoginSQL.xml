@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.commerce.admin.cm.login.service.impl.AdminLoginMapper">
+
+	<!-- 관리자 로그인 정보 조회 -->
+	<select id="selectAdminLoginInfo" parameterType="hashMap" resultType="hashMap">
+		/* AdminLoginSQL.selectAdminLoginInfo */
+		SELECT
+			ADMIN_NO    AS "adminNo",
+			LOGIN_ID    AS "loginId",
+			PWD         AS "pwd",
+			ADMIN_NM    AS "adminNm"
+		FROM TB_ADMIN
+		WHERE LOGIN_ID = #{loginId}
+	</select>
+
+</mapper>

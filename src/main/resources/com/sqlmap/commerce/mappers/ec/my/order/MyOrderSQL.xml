@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.commerce.ec.my.order.service.impl.MyOrderMapper">
+
+	<!-- 공통 검색 조건 -->
+	<sql id="myOrderSearchCondition">
+		WHERE A.MBR_NO = #{mbrNo}
+		<if test="searchPeriod != null and searchPeriod != ''">
+			<choose>
+				<when test='searchPeriod == "1"'>
+					AND A.ORD_DT >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 MONTH)
+				</when>
+				<when test='searchPeriod == "3"'>
+					AND A.ORD_DT >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 3 MONTH)
+				</when>
+				<when test='searchPeriod == "6"'>
+					AND A.ORD_DT >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 6 MONTH)
+				</when>
+			</choose>
+		</if>
+	</sql>
+
+	<!-- 주문내역 목록 -->
+	<select id="selectMyOrderList" parameterType="hashMap" resultType="hashMap">
+		/* MyOrderSQL.selectMyOrderList */
+		SELECT
+			A.ORD_NO            AS "ordNo",
+			DATE_FORMAT(A.ORD_DT, '%Y-%m-%d') AS "ordDt",
+			A.PAY_AMT           AS "payAmt",
+			A.RECIVER_NM        AS "reciverNm",
+			CASE A.ORD_STAT_CD
+				WHEN '10' THEN '주문확인'
+				WHEN '20' THEN '결제완료'
+				WHEN '30' THEN '배송준비'
+				WHEN '40' THEN '배송중'
+				WHEN '50' THEN '배송완료'
+				WHEN '90' THEN '주문취소'
+			END AS "ordStatNm",
+			A.ORD_STAT_CD       AS "ordStatCd",
+			CASE A.PAY_TP_CD
+				WHEN '10' THEN '무통장입금'
+				WHEN '20' THEN '카드결제'
+			END AS "payTpNm",
+			(SELECT COUNT(*) FROM TB_ORD_DTL WHERE ORD_NO = A.ORD_NO) AS "dtlCnt",
+			(SELECT B2.PRD_NM
+			 FROM TB_ORD_DTL B1
+			 INNER JOIN TB_PRD_MST B2 ON B1.PRD_CD = B2.PRD_CD
+			 WHERE B1.ORD_NO = A.ORD_NO AND B1.ORD_SEQ = 1) AS "firstPrdNm",
+			(SELECT C.IMG_PATH
+			 FROM TB_ORD_DTL B1
+			 LEFT JOIN TB_PRD_IMG C ON B1.PRD_CD = C.PRD_CD AND C.IMG_TP_CD = '10' AND C.SORT_SEQ = 1
+			 WHERE B1.ORD_NO = A.ORD_NO AND B1.ORD_SEQ = 1) AS "imgPath",
+			D.INVOICE_NO        AS "invoiceNo",
+			CASE D.DELV_CO_CD
+				WHEN 'CJ'     THEN 'CJ대한통운'
+				WHEN 'HANJIN' THEN '한진택배'
+				WHEN 'LOTTE'  THEN '롯데택배'
+				WHEN 'POST'   THEN '우체국택배'
+				WHEN 'LOGEN'  THEN '로젠택배'
+			END AS "delvCoNm"
+		FROM TB_ORD_MST A
+		LEFT JOIN TB_ORD_DELV_INFO D ON A.ORD_NO = D.ORD_NO
+		<include refid="myOrderSearchCondition"/>
+		ORDER BY A.ORD_DT DESC
+		LIMIT #{pageSize} OFFSET #{limitStart}
+	</select>
+
+	<!-- 주문내역 건수 -->
+	<select id="selectMyOrderListCnt" parameterType="hashMap" resultType="int">
+		/* MyOrderSQL.selectMyOrderListCnt */
+		SELECT COUNT(*)
+		FROM TB_ORD_MST A
+		<include refid="myOrderSearchCondition"/>
+	</select>
+
+	<!-- 주문 상세 (본인 주문만) -->
+	<select id="selectMyOrderDtl" parameterType="hashMap" resultType="hashMap">
+		/* MyOrderSQL.selectMyOrderDtl */
+		SELECT
+			A.ORD_NO            AS "ordNo",
+			DATE_FORMAT(A.ORD_DT, '%Y-%m-%d %H:%i') AS "ordDt",
+			A.ORD_STAT_CD       AS "ordStatCd",
+			CASE A.ORD_STAT_CD
+				WHEN '10' THEN '주문확인'
+				WHEN '20' THEN '결제완료'
+				WHEN '30' THEN '배송준비'
+				WHEN '40' THEN '배송중'
+				WHEN '50' THEN '배송완료'
+				WHEN '90' THEN '주문취소'
+			END AS "ordStatNm",
+			A.PAY_TP_CD         AS "payTpCd",
+			CASE A.PAY_TP_CD
+				WHEN '10' THEN '무통장입금'
+				WHEN '20' THEN '카드결제'
+			END AS "payTpNm",
+			A.PAY_AMT           AS "payAmt",
+			A.DELV_AMT          AS "delvAmt",
+			A.DEPOSITOR_NM      AS "depositorNm",
+			A.PG_APRV_NO        AS "pgAprvNo",
+			DATE_FORMAT(DATE_ADD(A.ORD_DT, INTERVAL 3 DAY), '%Y-%m-%d') AS "payLimitDt",
+			A.RECIVER_NM        AS "reciverNm",
+			A.DELV_HP_NO        AS "delvHpNo",
+			A.DELV_ZIPCODE      AS "delvZipcode",
+			A.DELV_BASE_ADDR    AS "delvBaseAddr",
+			A.DELV_DTL_ADDR     AS "delvDtlAddr",
+			A.DELV_MSG          AS "delvMsg",
+			D.INVOICE_NO        AS "invoiceNo",
+			CASE D.DELV_CO_CD
+				WHEN 'CJ'     THEN 'CJ대한통운'
+				WHEN 'HANJIN' THEN '한진택배'
+				WHEN 'LOTTE'  THEN '롯데택배'
+				WHEN 'POST'   THEN '우체국택배'
+				WHEN 'LOGEN'  THEN '로젠택배'
+			END AS "delvCoNm"
+		FROM TB_ORD_MST A
+		LEFT JOIN TB_ORD_DELV_INFO D ON A.ORD_NO = D.ORD_NO
+		WHERE A.ORD_NO = #{ordNo}
+		  AND A.MBR_NO = #{mbrNo}
+	</select>
+
+	<!-- 주문 상세 상품 목록 -->
+	<select id="selectMyOrderPrdList" parameterType="hashMap" resultType="hashMap">
+		/* MyOrderSQL.selectMyOrderPrdList */
+		SELECT
+			A.ORD_SEQ       AS "ordSeq",
+			A.PRD_CD        AS "prdCd",
+			B.PRD_NM        AS "prdNm",
+			B.SMPL_DESC     AS "smplDesc",
+			A.ORD_QTY       AS "ordQty",
+			A.SALE_PRC      AS "salePrc",
+			A.DISC_AMT      AS "discAmt",
+			A.ORD_AMT       AS "ordAmt",
+			C.IMG_PATH      AS "imgPath"
+		FROM TB_ORD_DTL A
+		LEFT JOIN TB_PRD_MST B ON A.PRD_CD = B.PRD_CD
+		LEFT JOIN TB_PRD_IMG C ON A.PRD_CD = C.PRD_CD AND C.IMG_TP_CD = '10' AND C.SORT_SEQ = 1
+		WHERE A.ORD_NO = #{ordNo}
+		ORDER BY A.ORD_SEQ
+	</select>
+
+	<!-- 주문 취소 (본인 주문 + 배송준비 전 상태만) -->
+	<update id="updateMyOrderCancel" parameterType="hashMap">
+		/* MyOrderSQL.updateMyOrderCancel */
+		UPDATE TB_ORD_MST
+		SET ORD_STAT_CD = '90'
+		WHERE ORD_NO = #{ordNo}
+		  AND MBR_NO = #{mbrNo}
+		  AND ORD_STAT_CD IN ('10', '20')
+	</update>
+
+	<!-- 취소 대상 주문의 상품/수량 목록 (재고 복원용) -->
+	<select id="selectOrderPrdQtyList" parameterType="hashMap" resultType="hashMap">
+		/* MyOrderSQL.selectOrderPrdQtyList */
+		SELECT
+			PRD_CD      AS "prdCd",
+			ORD_QTY     AS "ordQty"
+		FROM TB_ORD_DTL
+		WHERE ORD_NO = #{ordNo}
+		ORDER BY ORD_SEQ
+	</select>
+
+	<!-- 재고 복원 : 재고 미관리(재고 0 + 판매중)는 차감된 적이 없으므로 복원 대상 아님 -->
+	<!--            소진되어 일시품절(40)이 된 상품은 판매중(30)으로 되돌림 -->
+	<update id="updatePrdStockRestore" parameterType="hashMap">
+		/* MyOrderSQL.updatePrdStockRestore */
+		UPDATE TB_PRD_MST
+		SET STOCK_QTY = STOCK_QTY + #{ordQty},
+			PRD_STAT_CD = CASE WHEN PRD_STAT_CD = '40' THEN '30' ELSE PRD_STAT_CD END,
+			UPD_DT = CURRENT_TIMESTAMP
+		WHERE PRD_CD = #{prdCd}
+		  AND (STOCK_QTY &gt; 0 OR PRD_STAT_CD = '40')
+	</update>
+
+</mapper>

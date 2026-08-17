@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.commerce.admin.prd.service.impl.CatMngMapper">
+
+	<!-- 레벨/상위코드별 카테고리 목록 (대분류는 upCatCd 없음) -->
+	<select id="selectCatMngList" parameterType="hashMap" resultType="hashMap">
+		/* CatMngSQL.selectCatMngList */
+		SELECT
+			CAT_CD      AS "catCd",
+			CAT_NM      AS "catNm",
+			UP_CAT_CD   AS "upCatCd",
+			CAT_LVL     AS "catLvl",
+			SORT_SEQ    AS "sortSeq",
+			USE_YN      AS "useYn"
+		FROM TB_CAT_MNG
+		WHERE CAT_LVL = #{catLvl}
+		<if test="upCatCd != null and upCatCd != ''">
+			AND UP_CAT_CD = #{upCatCd}
+		</if>
+		ORDER BY SORT_SEQ, CAT_CD
+	</select>
+
+	<!-- 카테고리 단건 조회 -->
+	<select id="selectCatMngDtl" parameterType="String" resultType="hashMap">
+		/* CatMngSQL.selectCatMngDtl */
+		SELECT
+			CAT_CD      AS "catCd",
+			CAT_NM      AS "catNm",
+			UP_CAT_CD   AS "upCatCd",
+			CAT_LVL     AS "catLvl",
+			SORT_SEQ    AS "sortSeq",
+			USE_YN      AS "useYn"
+		FROM TB_CAT_MNG
+		WHERE CAT_CD = #{catCd}
+	</select>
+
+	<!-- 레벨별 최대 카테고리코드 (채번용 : 대 L / 중 M / 소 S + 3자리) -->
+	<select id="selectMaxCatCd" parameterType="int" resultType="String">
+		/* CatMngSQL.selectMaxCatCd */
+		SELECT MAX(CAT_CD)
+		FROM TB_CAT_MNG
+		WHERE CAT_LVL = #{catLvl}
+	</select>
+
+	<insert id="insertCat" parameterType="hashMap">
+		/* CatMngSQL.insertCat */
+		INSERT INTO TB_CAT_MNG (
+			CAT_CD, CAT_NM, UP_CAT_CD, CAT_LVL, SORT_SEQ, USE_YN
+		) VALUES (
+			#{catCd}, #{catNm}, #{upCatCd}, #{catLvl}, #{sortSeq}, #{useYn}
+		)
+	</insert>
+
+	<update id="updateCat" parameterType="hashMap">
+		/* CatMngSQL.updateCat */
+		UPDATE TB_CAT_MNG
+		SET CAT_NM = #{catNm},
+			SORT_SEQ = #{sortSeq},
+			USE_YN = #{useYn}
+		WHERE CAT_CD = #{catCd}
+	</update>
+
+	<delete id="deleteCat" parameterType="String">
+		/* CatMngSQL.deleteCat */
+		DELETE FROM TB_CAT_MNG
+		WHERE CAT_CD = #{catCd}
+	</delete>
+
+	<!-- 하위 카테고리 존재 건수 (삭제 가능 여부 판단) -->
+	<select id="selectSubCatCnt" parameterType="String" resultType="int">
+		/* CatMngSQL.selectSubCatCnt */
+		SELECT COUNT(*)
+		FROM TB_CAT_MNG
+		WHERE UP_CAT_CD = #{catCd}
+	</select>
+
+	<!-- 해당 카테고리를 사용중인 상품 건수 (삭제 가능 여부 판단) -->
+	<select id="selectCatPrdCnt" parameterType="hashMap" resultType="int">
+		/* CatMngSQL.selectCatPrdCnt */
+		SELECT COUNT(*)
+		FROM TB_PRD_MST
+		WHERE
+		<choose>
+			<when test="catLvl == 1">L_CAT_CD = #{catCd}</when>
+			<when test="catLvl == 2">M_CAT_CD = #{catCd}</when>
+			<otherwise>S_CAT_CD = #{catCd}</otherwise>
+		</choose>
+	</select>
+
+</mapper>

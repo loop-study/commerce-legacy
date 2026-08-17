@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!--
+        DB 접속 정보 (config/jdbc.properties)
+
+        시스템 프로퍼티로 덮어쓸 수 있다. 개발서버를 바라보게 하려면
+            mvn tomcat7:run-war -Djdbc.url=jdbc:mysql://개발서버:3306/commerce...
+    -->
+    <context:property-placeholder location="classpath:config/jdbc.properties"
+                                  system-properties-mode="OVERRIDE"/>
+
+    <!--
+        MySQL DataSource
+
+        DB 는 별도 컨테이너로 떠 있다 (docker compose up -d).
+        스키마·데이터 초기화는 컨테이너가 처음 만들어질 때 한 번만 수행하므로
+        (docker-compose.yml 의 docker-entrypoint-initdb.d 마운트 참고)
+        앱은 초기화에 관여하지 않는다.
+
+        ※ 레거시 그대로 : commons-dbcp 1.x, 커넥션 검증 설정 없음.
+          풀이 고갈되면 그대로 대기한다. PG 지연 실험에서 관찰한 그 구조다.
+    -->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url"             value="${jdbc.url}"/>
+        <property name="username"        value="${jdbc.username}"/>
+        <property name="password"        value="${jdbc.password}"/>
+        <property name="initialSize"     value="${jdbc.initialSize}"/>
+        <property name="maxActive"       value="${jdbc.maxActive}"/>
+    </bean>
+</beans>
