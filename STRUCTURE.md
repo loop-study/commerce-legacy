@@ -46,6 +46,12 @@ com.commerce.admin   ← BO
 ```
 
 ## DB 스키마 (src/main/resources/db/schema.sql)
+
+![ERD](docs/erd.png)
+
+> 관계선은 논리적 관계다. 실제 스키마에는 `FOREIGN KEY` 선언이 하나도 없고
+> 컬럼명 규칙으로만 이어져 있다.
+
 | 테이블 | 설명 | 주요 컬럼 |
 |--------|------|-----------|
 | TB_MBR | 회원 | MBR_NO(PK), LOGIN_ID, PWD, MBR_NM, MBR_STAT_CD[10정상/20휴면/30탈퇴/40블랙], MBR_GRD_CD[10일반] |
