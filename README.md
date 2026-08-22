@@ -101,9 +101,11 @@ PG를 8초 지연시키고 주문 8건을 동시에 넣으면,
 필요한 것 — JDK 8, Docker
 
 ```bash
-docker compose up -d      # DB (MySQL 5.7, localhost:3307)
-mvn tomcat7:run-war       # 앱  → http://localhost:8080
+docker compose up -d                 # DB (MySQL 5.7, localhost:3307)
+mvn tomcat7:run-war -DskipTests      # 앱 → http://localhost:8080
 ```
+
+`-DskipTests` 가 붙는 이유 — 테스트가 지금 일부러 빨갛다. [아래](#테스트) 참고.
 
 | | 계정 | 비밀번호 |
 |---|---|---|
@@ -114,8 +116,6 @@ mvn tomcat7:run-war       # 앱  → http://localhost:8080
 - JDK 8이 아니면 빌드가 실패한다 (`java.version=1.8`)
 - DB 데이터는 유지된다. 초기 상태로 되돌리려면 :
   `docker compose down && docker volume rm commerce-legacy_commerce-db-data && docker compose up -d`
-- 테스트가 지금 빨간색이라 `mvn tomcat7:run-war` 는 테스트 단계에서 멈춘다.
-  앱만 띄울 때는 `-DskipTests` 를 붙인다 (아래 참고)
 
 ### 테스트
 
@@ -149,6 +149,21 @@ Phase 2 에서 초록이 되면 필요 없어진다.
 통합 테스트는 `commerce_test` 스키마를 쓴다. 앱이 쓰는 `commerce` 는 건드리지 않고,
 테이블은 실행할 때마다 새로 만든다. 운영 설정 파일도 고치지 않는다 —
 클래스패스 앞에 놓인 `src/test/resources` 사본이 이긴다.
+
+#### 아직 없는 것 — 안전망
+
+레거시를 고칠 때 필요한 테스트는 두 종류다.
+
+| | 색 | 하는 일 |
+|---|---|---|
+| 특성화 테스트 | 초록 | 지금 동작을 그대로 고정한다. 고치다 깨뜨리면 여기가 먼저 운다 |
+| 부채 증명 테스트 | 빨강 | 올바른 기대값을 적어둔다. 개선 목표 |
+
+**지금 있는 것은 빨강뿐이다.** "재고 5개에 3개를 주문하면 2개가 남는다",
+"취소하면 재고가 돌아온다" 같은 정상 흐름을 지켜주는 테스트가 없다.
+이 상태로 구조를 바꾸는 것은 안전한 개선이 아니라 잘 되기를 바라는 것이다.
+
+Phase 2 의 첫 커밋은 특성화 테스트다. 정상 흐름이 초록으로 고정된 뒤에 구조를 만진다.
 
 ### 한 바퀴 둘러보기
 
