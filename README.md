@@ -114,6 +114,41 @@ mvn tomcat7:run-war       # 앱  → http://localhost:8080
 - JDK 8이 아니면 빌드가 실패한다 (`java.version=1.8`)
 - DB 데이터는 유지된다. 초기 상태로 되돌리려면 :
   `docker compose down && docker volume rm commerce-legacy_commerce-db-data && docker compose up -d`
+- 테스트가 지금 빨간색이라 `mvn tomcat7:run-war` 는 테스트 단계에서 멈춘다.
+  앱만 띄울 때는 `-DskipTests` 를 붙인다 (아래 참고)
+
+### 테스트
+
+**지금 테스트는 대부분 실패한다. 그게 의도다.**
+고칠 것을 먼저 코드로 적어두고 시작했다. 여기 적힌 단언이 곧 명세다.
+
+```bash
+mvn test                                    # 단위 테스트 (아무것도 필요 없다)
+mvn verify -Dmaven.test.failure.ignore=true # 통합 테스트까지 (DB 컨테이너 필요)
+mvn tomcat7:run-war -DskipTests             # 앱만 띄우기
+```
+
+`verify` 에 `-Dmaven.test.failure.ignore=true` 를 붙이는 이유는, 단위 테스트가
+빨간 채로 있으면 빌드가 `test` 단계에서 멈춰 통합 테스트까지 가지 못하기 때문이다.
+Phase 2 에서 초록이 되면 필요 없어진다.
+
+| | 실행 | 요구 조건 | 현재 |
+|---|---|---|---|
+| `*Test` | surefire · `test` 단계 | 없음 | 3개 중 3개 실패 |
+| `*IT` | failsafe · `verify` 단계 | DB 컨테이너 | 6개 중 3개 실패 |
+
+무엇이 왜 실패하는지
+
+| 테스트 | 잡는 것 |
+|---|---|
+| `PagingUtilTest` | `pageNo` 하한 없음 · 숫자 아닌 값 · `pageSize` 상한 없음 |
+| `StockConcurrencyIT` | 재고 5개에 20건 동시 주문 → 20건 성공, 재고 -15 |
+| `OrderCancelIT` | 카드주문을 취소해도 PG 승인 취소가 나가지 않는다 |
+| `ContextLoadsIT` | 웹 없이 서비스 계층이 뜨는지 (통과) |
+
+통합 테스트는 `commerce_test` 스키마를 쓴다. 앱이 쓰는 `commerce` 는 건드리지 않고,
+테이블은 실행할 때마다 새로 만든다. 운영 설정 파일도 고치지 않는다 —
+클래스패스 앞에 놓인 `src/test/resources` 사본이 이긴다.
 
 ### 한 바퀴 둘러보기
 
