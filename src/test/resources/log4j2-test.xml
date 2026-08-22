@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    테스트 로그 설정
+
+    log4j2 는 log4j2-test.xml 이 있으면 그것을 먼저 쓴다. 운영본은 그대로 둔다.
+
+    운영은 com.commerce 를 DEBUG 로 두고 있어 SQL 과 파라미터가 전부 찍힌다
+    (그 자체가 부채 목록에 올라 있다). 동시성 테스트는 스레드 20개가
+    같은 SQL 을 동시에 뱉으므로 그 상태로는 실패 원인을 찾을 수 없다.
+
+    특정 테스트에서 SQL 을 보고 싶으면 아래 level 을 DEBUG 로 되돌리면 된다.
+-->
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="com.commerce" level="INFO"/>
+        <Logger name="org.springframework" level="WARN"/>
+        <Logger name="org.mybatis" level="WARN"/>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd">
+
+    <!--
+        테스트용 DataSource
+
+        운영의 com/spring/context-datasource.xml 을 대신한다.
+        AbstractServiceIT 가 그 파일을 빼고 이 파일을 넣어서 컨텍스트를 띄운다.
+        같은 이름의 빈을 덮어쓰지 않고 아예 갈아끼우는 것은,
+        property-placeholder 가 둘이 되면 서로의 자리표시자를 못 풀어 깨지기 때문이다.
+
+        접속 정보는 클래스패스 앞에 있는 테스트 사본
+        (src/test/resources/config/jdbc.properties)에서 읽는다.
+        운영 설정 파일은 한 줄도 건드리지 않는다.
+    -->
+    <context:property-placeholder location="classpath:config/jdbc.properties"
+                                  system-properties-mode="OVERRIDE"/>
+
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driver}"/>
+        <property name="url"             value="${jdbc.url}"/>
+        <property name="username"        value="${jdbc.username}"/>
+        <property name="password"        value="${jdbc.password}"/>
+        <property name="initialSize"     value="${jdbc.initialSize}"/>
+        <property name="maxActive"       value="${jdbc.maxActive}"/>
+    </bean>
+
+    <!--
+        스키마·데이터 적재
+
+        운영 DB 는 도커가 컨테이너를 처음 만들 때 한 번만 적재한다.
+        테스트는 그 시점을 기다릴 수 없으므로 컨텍스트가 뜰 때 직접 적재한다.
+        읽는 파일은 앱과 같은 것이다 (target/classes/db/).
+        테스트용 스키마 사본을 따로 두면 그 사본이 곧 거짓말이 된다.
+
+        컨텍스트는 테스트 클래스마다 새로 뜨지 않고 JVM 안에서 재사용되므로
+        이 적재는 한 번의 mvn verify 에 한 번만 돈다.
+        클래스 사이에 데이터가 남는다는 뜻이고, 각 테스트가 자기 전제를 직접 세운다.
+    -->
+    <jdbc:initialize-database data-source="dataSource">
+        <jdbc:script location="classpath:db/test-clean.sql"/>
+        <jdbc:script location="classpath:db/schema.sql"/>
+        <jdbc:script location="classpath:db/data.sql"/>
+    </jdbc:initialize-database>
+
+</beans>
